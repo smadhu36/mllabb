@@ -1,61 +1,42 @@
-from sklearn.datasets import load_breast_cancer
-from sklearn.model_selection import train_test_split, GridSearchCV
+import numpy as np
+from sklearn.datasets import load_iris
 from sklearn.tree import DecisionTreeClassifier, plot_tree
 import matplotlib.pyplot as plt
-from sklearn.tree import export_graphviz
-import graphviz
+from sklearn.model_selection import train_test_split
+data = load_iris()
+X = data.data
+y = data.target
+feature_names = data.feature_names
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.3, random_state=42)
+full_tree = DecisionTreeClassifier(random_state=42, criterion='entropy')
+full_tree.fit(X_train, y_train)
+plt.figure(figsize=(12, 8))
+plot_tree(full_tree, filled=True, feature_names=feature_names)
+plt.title("Full Decision Tree")
+plt.show()
+def post_prune(tree, X_val, y_val):
+    initial_accuracy = tree.score(X_val, y_val)
 
-# Load breast cancer dataset
-data = load_breast_cancer(as_frame=True)
-X, y = data.data, data.target
+    for node in range(tree.tree_.node_count):
+        if tree.tree_.children_left[node] == tree.tree_.children_right[node]:
+            continue
 
-# Print feature names
-feature_names = X.columns.tolist()
+        left_child = tree.tree_.children_left[node]
+        right_child = tree.tree_.children_right[node]
+        tree.tree_.children_left[node] = tree.tree_.children_right[node] = -1
+        tree.tree_.value[node] = np.mean(tree.tree_.value[left_child:right_child + 1], axis=0)
+        pruned_accuracy = tree.score(X_val, y_val)
+        if pruned_accuracy < initial_accuracy:
+            tree.tree_.children_left[node] = left_child
+            tree.tree_.children_right[node] = right_child
+    return tree
+pruned_tree = post_prune(full_tree, X_val, y_val)
+plt.figure(figsize=(12, 8))
+plot_tree(pruned_tree, filled=True, feature_names=feature_names)
+plt.title("Pruned Decision Tree")
+plt.show()
+print(f"Accuracy of full tree: {full_tree.score(X_val, y_val):.2f}")
+print(f"Accuracy of pruned tree: {pruned_tree.score(X_val, y_val):.2f}")
 print("Feature names:", feature_names)
 
-# Separating Training and Testing data
-X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.2, random_state=42)
 
-# Train the original decision tree model
-original_model = DecisionTreeClassifier(criterion="entropy")
-original_model.fit(X_train, y_train)
-
-# Model Accuracy before pruning
-accuracy_before_pruning = original_model.score(X_test, y_test)
-print("Accuracy before pruning:", accuracy_before_pruning)
-
-# Plot original tree
-plt.figure(figsize=(15, 10))
-plot_tree(original_model, filled=True, feature_names=feature_names)
-plt.title("Original Decision Tree")
-plt.show()
-
-# Cost-complexity pruning (Post-pruning)
-path = original_model.cost_complexity_pruning_path(X_train, y_train)
-ccp_alphas, impurities = path.ccp_alphas, path.impurities
-
-# Train a series of decision trees with different alpha values
-pruned_models = []
-for ccp_alpha in ccp_alphas:
-    pruned_model = DecisionTreeClassifier(criterion="entropy", ccp_alpha=ccp_alpha)
-    pruned_model.fit(X_train, y_train)
-    pruned_models.append(pruned_model)
-
-# Find the model with the best accuracy on test data
-best_accuracy = 0
-best_pruned_model = None
-for pruned_model in pruned_models:
-    accuracy = pruned_model.score(X_test, y_test)
-    if accuracy > best_accuracy:
-        best_accuracy = accuracy
-        best_pruned_model = pruned_model
-
-# Model Accuracy after pruning
-accuracy_after_pruning = best_pruned_model.score(X_test, y_test)
-print("Accuracy after pruning:", accuracy_after_pruning)
-
-# Plot pruned tree with feature names
-plt.figure(figsize=(15, 10))
-plot_tree(best_pruned_model, filled=True, feature_names=feature_names)
-plt.title("Pruned Decision Tree with Cost-Complexity Pruning")
-plt.show()
