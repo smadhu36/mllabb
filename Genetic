@@ -1,0 +1,29 @@
+import random
+def fitness_function(x):
+    return x**2
+def mutate(individual, mutation_rate, lower_bound, upper_bound):
+    if random.random() < mutation_rate:
+        return random.uniform(lower_bound, upper_bound)
+    return individual
+def genetic_algorithm(population_size=20, generations=50, mutation_rate=0.1, lower_bound=-10, upper_bound=10):
+    population = [random.uniform(lower_bound, upper_bound) for _ in range(population_size)]
+    best_individual = None
+    for generation in range(generations):
+
+        fitnesses = [fitness_function(ind) for ind in population]
+        best_individual = population[fitnesses.index(min(fitnesses))]
+        print(f"Generation {generation}: Best = {best_individual}, Fitness = {min(fitnesses)}")
+        new_population = []
+        for _ in range(population_size):
+
+            parent1, parent2 = random.choices(population, weights=[1/f for f in fitnesses], k=2)
+            alpha = random.random()
+            child = alpha * parent1 + (1 - alpha) * parent2
+            child = mutate(child, mutation_rate, lower_bound, upper_bound)
+            new_population.append(child)
+
+        population = new_population
+
+    return best_individual, fitness_function(best_individual)
+best, fitness = genetic_algorithm()
+print(f"Optimal solution: {best}, Fitness: {fitness}")
