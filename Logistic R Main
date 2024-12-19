@@ -1,0 +1,26 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+import seaborn as sns
+import matplotlib.pyplot as plt
+df = pd.read_csv(r"/content/Iris (1).csv")
+df = df.drop(columns=['Id'])
+df['Species'] = df['Species'].astype('category').cat.codes
+df = df.dropna()
+X = df.drop(columns='Species')
+y = df['Species']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.30, random_state=20)
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+lr = LogisticRegression(max_iter=200)
+lr.fit(X_train_scaled, y_train)
+train_score = lr.score(X_train_scaled, y_train)
+test_score = lr.score(X_test_scaled, y_test)
+corr = df.corr()
+plt.figure(figsize=(10, 6))
+sns.heatmap(corr, annot=True, cmap='coolwarm')
+plt.show()
+print(f"Training Accuracy: {train_score}")
+print(f"Testing Accuracy: {test_score}")
